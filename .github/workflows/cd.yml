@@ -1,0 +1,23 @@
+name: Continuous Deployment
+
+on:
+  workflow_run:
+    workflows: ["Continuous Integration"]
+    types:
+      - completed
+    branches:
+      - main
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Deploy to Production
+      run: |
+        echo "🚀 Déclenchement du déploiement car la CI a réussi sur main..."
+        # Exemple pour Railway
+        # npm i -g @railway/cli
+        # railway upsert --detach --token ${{ secrets.RAILWAY_TOKEN }}
