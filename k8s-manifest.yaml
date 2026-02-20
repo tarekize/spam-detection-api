@@ -15,17 +15,17 @@ spec:
         app: spam-detection
     spec:
       containers:
-      - name: spam-api
-        image: VOTRE_DOCKER_USER/spam-detection-api:latest
-        ports:
-        - containerPort: 8000
-        resources:
-          limits:
-            cpu: "500m"
-            memory: "512Mi"
-          requests:
-            cpu: "200m"
-            memory: "256Mi"
+        - name: spam-api
+          image: tarekize/spam-detection-api:latest
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
 ---
 apiVersion: v1
 kind: Service
