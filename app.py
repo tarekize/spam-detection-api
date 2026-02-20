@@ -1,11 +1,16 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import joblib
 from sklearn.feature_extraction.text import CountVectorizer
 import os
 
 app = FastAPI()
+
+# Servir les fichiers statiques
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # CORS middleware
 app.add_middleware(
@@ -31,7 +36,7 @@ except Exception as e:
 
 @app.get("/")
 def working():
-    return {"status": "API de détection spam opérationnelle", "version": "1.0"}
+    return FileResponse("index.html")
 
 @app.get("/health")
 def health_check():
