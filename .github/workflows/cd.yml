@@ -5,27 +5,62 @@ on:
     types: [completed]
     branches: [main]
 jobs:
-  deploy:
+  build-and-push:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: true
-        tags: ${{ secrets.DOCKER_USERNAME }}/spam-detection-api:latest
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          # On tague l'image avec 'latest' pour le test et le SHA du commit pour la traçabilité
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/spam-detection-api:latest
+            ${{ secrets.DOCKER_USERNAME }}/spam-detection-api:${{ github.sha }}
 
-    - name: Deploy to Cloud
-      run: |
-        echo "🚀 Image Docker poussée ! Mise à jour du déploiement en cours..."
-        # Ici vous ajouteriez vos commandes kubectl ou Railway
+  deploy-test:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set Kubernetes Context (TEST)
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBE_CONFIG_TEST }}
 
+      - name: Deploy to Test Cluster
+        run: |
+          echo " Déploiement sur le cluster de TEST..."
+          kubectl apply -f k8s-manifest.yaml
+          kubectl rollout restart deployment/spam-detection-api
+
+  deploy-production:
+    needs: deploy-test
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set Kubernetes Context (PROD)
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBE_CONFIG_PROD }}
+
+      - name: Deploy to Production Cluster
+        run: |
+          echo " Déploiement sur le cluster de PRODUCTION..."
+          # On peut utiliser le SHA spécifique pour être sûr de ce qu'on déploie en prod
+          sed -i 's/:latest/:${{ github.sha }}/g' k8s-manifest.yaml
+          kubectl apply -f k8s-manifest.yaml
+          kubectl rollout status deployment/spam-detection-api
